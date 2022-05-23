@@ -36,20 +36,56 @@ func NewStickySessionWithOptions(cookieName string, options CookieOptions) *Stic
 	return &StickySession{cookieName: cookieName, options: options}
 }
 
+func (s *StickySession) Confirmed(req *http.Request) bool {
+	appSessionId := "app_session_id"
+	if req.Header.Get(appSessionId) != "" {
+		return true
+	}
+	if req.URL.Query().Get(appSessionId) != "" {
+		return true;
+	}
+	if _, err := req.Cookie(appSessionId); err == nil {
+		return true
+	}
+	return false
+}
+
 // GetBackend returns the backend URL stored in the sticky cookie, iff the backend is still in the valid list of servers.
 func (s *StickySession) GetBackend(req *http.Request, servers []*url.URL) (*url.URL, bool, error) {
-	cookie, err := req.Cookie(s.cookieName)
-	switch err {
-	case nil:
-	case http.ErrNoCookie:
-		return nil, false, nil
-	default:
-		return nil, false, err
+	var serverURL *url.URL
+	var serverURLerr error
+
+	header := req.Header.Get(s.cookieName)
+	if header != "" {
+		serverURL, serverURLerr = url.Parse(header)
 	}
 
-	serverURL, err := url.Parse(cookie.Value)
-	if err != nil {
-		return nil, false, err
+	if serverURL == nil && serverURLerr == nil {
+		query := req.URL.Query().Get(s.cookieName)
+		if query != "" {
+			serverURL, serverURLerr = url.Parse(query)
+		}
+	}
+
+	if serverURL == nil && serverURLerr == nil {
+		cookie, err := req.Cookie(s.cookieName)
+		switch err {
+		case nil:
+		case http.ErrNoCookie:
+		default:
+			serverURLerr = err
+		}
+		if err == nil {
+			serverURL, serverURLerr = url.Parse(cookie.Value)
+		}
+	}
+
+	if serverURLerr != nil {
+		return nil, false, serverURLerr
+	}
+
+	if serverURL == nil {
+		return nil, false, nil
 	}
 
 	if s.isBackendAlive(serverURL, servers) {
@@ -60,25 +96,26 @@ func (s *StickySession) GetBackend(req *http.Request, servers []*url.URL) (*url.
 
 // StickBackend creates and sets the cookie
 func (s *StickySession) StickBackend(backend *url.URL, w *http.ResponseWriter) {
-	opt := s.options
-
-	cp := "/"
-	if opt.Path != "" {
-		cp = opt.Path
-	}
-
-	cookie := &http.Cookie{
-		Name:     s.cookieName,
-		Value:    backend.String(),
-		Path:     cp,
-		Domain:   opt.Domain,
-		Expires:  opt.Expires,
-		MaxAge:   opt.MaxAge,
-		Secure:   opt.Secure,
-		HttpOnly: opt.HTTPOnly,
-		SameSite: opt.SameSite,
-	}
-	http.SetCookie(*w, cookie)
+	(*w).Header().Set(s.cookieName, backend.String())
+	//opt := s.options
+	//
+	//cp := "/"
+	//if opt.Path != "" {
+	//	cp = opt.Path
+	//}
+	//
+	//cookie := &http.Cookie{
+	//	Name:     s.cookieName,
+	//	Value:    backend.String(),
+	//	Path:     cp,
+	//	Domain:   opt.Domain,
+	//	Expires:  opt.Expires,
+	//	MaxAge:   opt.MaxAge,
+	//	Secure:   opt.Secure,
+	//	HttpOnly: opt.HTTPOnly,
+	//	SameSite: opt.SameSite,
+	//}
+	//http.SetCookie(*w, cookie)
 }
 
 func (s *StickySession) isBackendAlive(needle *url.URL, haystack []*url.URL) bool {

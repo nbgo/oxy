@@ -108,7 +108,8 @@ func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// make shallow copy of request before chaning anything to avoid side effects
 	newReq := *req
 	stuck := false
-	if r.stickySession != nil {
+	stickySession := r.stickySession != nil && r.stickySession.Confirmed(&newReq)
+	if stickySession {
 		cookieURL, present, err := r.stickySession.GetBackend(&newReq, r.Servers())
 
 		if err != nil {
@@ -128,7 +129,7 @@ func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		if r.stickySession != nil {
+		if stickySession {
 			r.stickySession.StickBackend(url, &w)
 		}
 		newReq.URL = url
