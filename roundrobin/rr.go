@@ -109,6 +109,7 @@ func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	newReq := *req
 	stuck := false
 	stickySession := r.stickySession != nil && r.stickySession.Confirmed(&newReq)
+
 	if stickySession {
 		cookieURL, present, err := r.stickySession.GetBackend(&newReq, r.Servers())
 

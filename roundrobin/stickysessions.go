@@ -44,8 +44,10 @@ func (s *StickySession) Confirmed(req *http.Request) bool {
 	if req.URL.Query().Get(appSessionId) != "" {
 		return true;
 	}
-	if _, err := req.Cookie(appSessionId); err == nil {
-		return true
+	if req.Method == http.MethodGet {
+		if _, err := req.Cookie(appSessionId); err == nil {
+			return true
+		}
 	}
 	return false
 }

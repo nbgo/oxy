@@ -175,8 +175,9 @@ func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// make shallow copy of request before changing anything to avoid side effects
 	newReq := *req
 	stuck := false
+	stickySession := rb.stickySession != nil && rb.stickySession.Confirmed(&newReq)
 
-	if rb.stickySession != nil {
+	if stickySession {
 		cookieUrl, present, err := rb.stickySession.GetBackend(&newReq, rb.Servers())
 
 		if err != nil {
@@ -201,7 +202,7 @@ func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			log.WithFields(log.Fields{"Request": utils.DumpHttpRequest(req), "ForwardURL": fwdURL}).Debugf("vulcand/oxy/roundrobin/rebalancer: Forwarding this request to URL")
 		}
 
-		if rb.stickySession != nil {
+		if stickySession {
 			rb.stickySession.StickBackend(fwdURL, &w)
 		}
 
