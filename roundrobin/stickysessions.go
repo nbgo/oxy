@@ -96,6 +96,11 @@ func (s *StickySession) GetBackend(req *http.Request, servers []*url.URL) (*url.
 	return nil, false, nil
 }
 
+// AnnounceBackend writes stickiness value to request so executing node is aware if stickiness value.
+func (s *StickySession) AnnounceBackend(backend *url.URL, req *http.Request) {
+	req.Header.Set(s.cookieName, backend.String())
+}
+
 // StickBackend creates and sets the cookie
 func (s *StickySession) StickBackend(backend *url.URL, w *http.ResponseWriter) {
 	(*w).Header().Set(s.cookieName, backend.String())

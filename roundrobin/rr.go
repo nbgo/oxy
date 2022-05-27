@@ -141,6 +141,9 @@ func (r *RoundRobin) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		r.log.WithFields(log.Fields{"Request": utils.DumpHttpRequest(req), "ForwardURL": newReq.URL}).Debugf("vulcand/oxy/roundrobin/rr: Forwarding this request to URL")
 	}
 
+	if stickySession {
+		r.stickySession.AnnounceBackend(newReq.URL, &newReq)
+	}
 	// Emit event to a listener if one exists
 	if r.requestRewriteListener != nil {
 		r.requestRewriteListener(req, &newReq)

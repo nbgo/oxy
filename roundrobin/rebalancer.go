@@ -209,6 +209,10 @@ func (rb *Rebalancer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		newReq.URL = fwdURL
 	}
 
+	if stickySession {
+		rb.stickySession.AnnounceBackend(newReq.URL, &newReq)
+	}
+
 	// Emit event to a listener if one exists
 	if rb.requestRewriteListener != nil {
 		rb.requestRewriteListener(req, &newReq)
